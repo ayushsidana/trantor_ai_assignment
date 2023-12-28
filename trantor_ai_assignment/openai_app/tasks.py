@@ -1,8 +1,5 @@
-from celery import Celery
-from services.openai_service import get_openai_response
-
-app = Celery("trantor_ai_assignment")
-app.config_from_object("celery_config")
+from trantor_ai_assignment.celery_app import app
+from trantor_ai_assignment.openai_app.services.openai_service import get_openai_response
 
 @app.task
 def process_question(question: str) -> str:

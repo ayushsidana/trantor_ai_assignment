@@ -2,8 +2,8 @@ import logging
 from fastapi import HTTPException
 from sqlmodel import Session
 
-from openai_app.tasks import process_question
-from openai_app.services.database_service import add_question_to_database
+from trantor_ai_assignment.openai_app.tasks import process_question
+from trantor_ai_assignment.openai_app.services.database_service import add_question_to_database
 
 logger = logging.getLogger(__name__)
 

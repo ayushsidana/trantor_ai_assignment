@@ -1,9 +1,10 @@
 import logging
+
 from fastapi import APIRouter, HTTPException
-from openai_app.services.database_service import fetch_stored_answer, add_question_to_database
+from trantor_ai_assignment.openai_app.services.database_service import fetch_stored_answer, add_question_to_database
 from trantor_ai_assignment.database import get_session
-from openai_app.schemas import QuestionCreate, QuestionResponse
-from openai_app.tasks import process_question
+from trantor_ai_assignment.openai_app.schemas import QuestionCreate, QuestionResponse
+from trantor_ai_assignment.openai_app.tasks import process_question
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +27,8 @@ async def ask_question(question: QuestionCreate):
     Raises:
     - HTTPException: If any internal server error occurs during processing.
     """
-    logger.info(f"Received question: {question.question}")
+    logger.info(f"Received question: {question.text}")
+    question_text = question.text
 
     try:
         with get_session() as db_session:
@@ -36,13 +38,13 @@ async def ask_question(question: QuestionCreate):
                 return {"answer": stored_answer}
             
             # Process the question asynchronously using Celery
-            task = process_question.delay(question.question)
+            task = process_question.delay(question_text)
             answer = task.get()
             
             # Store the processed answer in the database
-            add_question_to_database(db_session, question.question, answer)
+            add_question_to_database(db_session, question_text, answer)
             
-            return {"message": "Question received and is being processed asynchronously."}
+            return QuestionResponse(question=question_text, answer=answer)
 
     except Exception as e:
         logger.error(f"Error occurred while processing the question: {str(e)}")
