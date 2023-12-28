@@ -9,7 +9,7 @@ async def get_openai_response(question: str) -> str:
     async with AsyncClient() as client:
         response = await client.post(
             OPENAI_ENDPOINT,
-            headers={"Authorization": f"Bearer sfsag"},
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
             json={"prompt": question, "max_tokens": 150}
         )
         response.raise_for_status()

@@ -1,5 +1,5 @@
 from celery import Celery
-from .openai_client import get_openai_response
+from services.openai_service import get_openai_response
 
 app = Celery("trantor_ai_assignment")
 app.config_from_object("celery_config")
