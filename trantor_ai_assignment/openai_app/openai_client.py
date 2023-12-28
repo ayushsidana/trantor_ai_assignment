@@ -1,6 +1,6 @@
 import backoff
 from httpx import AsyncClient
-# from my_chat_api.settings import OPENAI_API_KEY
+from trantor_ai_assignment.settings import OPENAI_API_KEY
 
 OPENAI_ENDPOINT = "https://api.openai.com/v1/engines/gpt-3.5-turbo/completions"
 
