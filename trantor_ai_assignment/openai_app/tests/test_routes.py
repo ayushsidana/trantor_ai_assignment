@@ -1,34 +1,40 @@
+import unittest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 from trantor_ai_assignment.main import app
-from trantor_ai_assignment.database import get_session
 
 client = TestClient(app)
 
-@patch('trantor_ai_assignment.database.get_session')
-def test_ask_question_new_question(mock_get_session):
-    mock_session = MagicMock()
-    mock_session.exec.return_value.first.return_value = None
-    mock_get_session.return_value = mock_session
 
-    response = client.post("openai/question/", json={"question": "What is FastAPI?"})
-    assert response.status_code == 200
-    assert response.json() == {"message": "Question received and is being processed."}
+class TestQuestionEndpoint(unittest.TestCase):
 
-@patch('trantor_ai_assignment.database.get_session')
-def test_ask_question_existing_question(mock_get_session):
-    mock_session = MagicMock()
-    mock_session.exec.return_value.first.return_value = {"answer": "FastAPI is a modern web framework for building APIs."}
-    mock_get_session.return_value = mock_session
+    @patch('trantor_ai_assignment.routes.fetch_stored_answer')
+    def test_get_answer_from_database(self, mock_fetch_stored_answer):
+        mock_fetch_stored_answer.return_value = "Paris"
+        
+        response = client.post("/question/", json={"question": "What is the capital of France?"})
+        
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("answer", data)
+        self.assertEqual(data["answer"], "Paris")
 
-    response = client.post("openai/question/", json={"question": "What is FastAPI?"})
-    assert response.status_code == 200
-    assert response.json() == {"answer": "FastAPI is a modern web framework for building APIs."}
+    @patch('trantor_ai_assignment.routes.process_question.delay')
+    def test_process_question_asynchronously(self, mock_process_question_delay):
+        mock_process_question_delay.return_value.get.return_value = "Sunny"
+        
+        response = client.post("/question/", json={"question": "What is the weather like today?"})
+        
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("message", data)
+        self.assertEqual(data["message"], "Question received and is being processed asynchronously.")
 
-@patch('trantor_ai_assignment.database.get_session')
-def test_ask_question_error(mock_get_session):
-    mock_get_session.side_effect = Exception("Database connection error")
-
-    response = client.post("openai/question/", json={"question": "What is FastAPI?"})
-    assert response.status_code == 500
-    assert response.json() == {"detail": "Internal server error occurred."}
+    @patch('trantor_ai_assignment.routes.fetch_stored_answer')
+    def test_internal_server_error(self, mock_fetch_stored_answer):
+        mock_fetch_stored_answer.side_effect = Exception("Mocked internal server error")
+            
+        response = client.post("/question/", json={"question": "Test question"})
+            
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("Internal server error occurred.", response.text)
