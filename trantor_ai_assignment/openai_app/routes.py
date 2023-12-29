@@ -1,50 +1,67 @@
 import logging
-
 from fastapi import APIRouter, HTTPException
-from trantor_ai_assignment.openai_app.services.database_service import fetch_stored_answer, add_question_to_database
-from trantor_ai_assignment.database import get_session
+from fastapi.responses import StreamingResponse
 from trantor_ai_assignment.openai_app.schemas import QuestionCreate, QuestionResponse
-from trantor_ai_assignment.openai_app.tasks import process_question
+from trantor_ai_assignment.openai_app.tasks import handle_question
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/question/", response_model=QuestionResponse)
-async def ask_question(question: QuestionCreate):
+@router.post("/question/non-streaming/", response_model=QuestionResponse)
+async def ask_question_non_streaming(question: QuestionCreate):
     """
-    Receive a question, check if the corresponding answer is available in the database.
-    If the answer is found, return it. Otherwise, process the question asynchronously using Celery.
-    
-    Parameters:
-    - question (QuestionCreate): The input question to process.
-    
+    Handle a question asynchronously and provide a non-streaming response.
+
+    This endpoint receives a question, processes it asynchronously using the 
+    handle_question task, and returns a non-streaming response containing the 
+    question text and the generated answer.
+
+    Args:
+        question (QuestionCreate): The input question with text.
+
     Returns:
-    - QuestionResponse: A response containing the answer or a message indicating the question is being processed.
-    
+        QuestionResponse: A response containing the original question text and 
+                          the generated answer.
+
     Raises:
-    - HTTPException: If any internal server error occurs during processing.
+        HTTPException: If there's an internal server error during processing.
     """
-    logger.info(f"Received question: {question.text}")
-    question_text = question.text
-
     try:
-        with get_session() as db_session:
-            stored_answer = fetch_stored_answer(db_session, question_text)
-            
-            if stored_answer:
-                return QuestionResponse(text=question_text, answer=stored_answer)
-            
-            # Process the question asynchronously using Celery
-            answer = await process_question(question_text)
-            
-            # Store the processed answer in the database
-            add_question_to_database(db_session, question_text, answer)
-            
-            return QuestionResponse(text=question_text, answer=answer)
-
+        logger.info(f"Received question for non-streaming: {question.text}")
+        answer = await handle_question(question.text)
+        return QuestionResponse(text=question.text, answer=answer)
     except Exception as e:
-        logger.error(f"Error occurred while processing the question: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error occurred.")
+        logger.error(f"Error processing non-streaming question: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.post("/question/streaming/")
+async def ask_question_streaming(question: QuestionCreate):
+    """
+    Stream the response for the given question.
+
+    This endpoint receives a question, processes it asynchronously using the 
+    handle_question task, and streams the generated answer as a text/plain 
+    streaming response.
+
+    Args:
+        question (QuestionCreate): The input question with text.
+
+    Returns:
+        StreamingResponse: A streaming response containing the generated answer.
+
+    Raises:
+        HTTPException: If there's an internal server error during processing.
+    """
+    try:
+        logger.info(f"Received question for streaming: {question.text}")
+
+        async def generate():
+            answer = handle_question(question.text)
+            yield answer
+
+        return StreamingResponse(generate(), media_type="text/plain")
+    except Exception as e:
+        logger.error(f"Error processing streaming question: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

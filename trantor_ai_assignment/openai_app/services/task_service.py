@@ -5,6 +5,7 @@ from sqlmodel import Session
 from trantor_ai_assignment.openai_app.tasks import process_question
 from trantor_ai_assignment.openai_app.services.database_service import add_question_to_database
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def wait_and_store_answer(db_session: Session, question_text: str):

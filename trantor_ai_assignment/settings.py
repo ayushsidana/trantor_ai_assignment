@@ -10,3 +10,5 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', default='default_openai_api_key')
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
 ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', default='*')
+
+OPENAI_ENDPOINT = "https://api.openai.com/v1/engines/gpt-3.5-turbo/completions"
