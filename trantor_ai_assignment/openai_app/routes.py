@@ -32,19 +32,18 @@ async def ask_question(question: QuestionCreate):
 
     try:
         with get_session() as db_session:
-            stored_answer = fetch_stored_answer(db_session, question.question)
+            stored_answer = fetch_stored_answer(db_session, question_text)
             
             if stored_answer:
-                return {"answer": stored_answer}
+                return QuestionResponse(text=question_text, answer=stored_answer)
             
             # Process the question asynchronously using Celery
-            task = process_question.delay(question_text)
-            answer = task.get()
+            answer = await process_question(question_text)
             
             # Store the processed answer in the database
             add_question_to_database(db_session, question_text, answer)
             
-            return QuestionResponse(question=question_text, answer=answer)
+            return QuestionResponse(text=question_text, answer=answer)
 
     except Exception as e:
         logger.error(f"Error occurred while processing the question: {str(e)}")

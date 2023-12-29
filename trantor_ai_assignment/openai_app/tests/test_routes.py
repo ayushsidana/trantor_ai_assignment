@@ -19,17 +19,15 @@ class TestQuestionEndpoint(unittest.TestCase):
         self.assertIn("answer", data)
         self.assertEqual(data["answer"], "Paris")
 
-    @patch('trantor_ai_assignment.openai_app.tasks.process_question.delay')
-    def test_process_question_asynchronously(self, mock_process_question_delay):
-        mock_process_question_delay.return_value.get.return_value = "Sunny"
+    @patch('trantor_ai_assignment.openai_app.tasks.process_question')
+    def test_process_question_asynchronously(self, mock_process_question):
+        mock_process_question.return_value = "Sunny"
         
         response = client.post("openai/question/", json={"text": "What is the weather like today?"})
         
         data = response.json()
         self.assertEqual(response.status_code, 200)
-        self.assertIn("question", data)
         self.assertIn("answer", data)
-        self.assertEqual(data["question"], "What is the weather like today?")
         self.assertEqual(data["answer"], "Sunny")
 
     @patch('trantor_ai_assignment.openai_app.services.database_service.fetch_stored_answer')

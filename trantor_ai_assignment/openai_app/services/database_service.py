@@ -13,7 +13,7 @@ def fetch_stored_answer(db_session: Session, question_text: str) -> str:
     - str: The stored answer corresponding to the provided question text if it exists in the database. 
            Returns None if no answer is found for the given question text.
     """
-    stored_question = db_session.exec(select(Question).where(Question.question == question_text)).first()
+    stored_question = db_session.exec(select(Question).where(Question.text == question_text)).first()
     return stored_question.answer if stored_question else None
 
 

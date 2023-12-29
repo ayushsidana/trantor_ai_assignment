@@ -1,5 +1,4 @@
 from pydantic import BaseModel, validator
-from datetime import datetime
 
 class QuestionCreate(BaseModel):
     text: str
@@ -17,11 +16,5 @@ class QuestionCreate(BaseModel):
         return v
 
 class QuestionResponse(BaseModel):
-    id: int
     text: str
     answer: str
-    created_at: datetime
-    is_active: bool
-
-    class Config:
-        orm_mode = True

@@ -1,9 +1,17 @@
-from sqlmodel import Session, create_engine
-from sqlmodel.pool import StaticPool
-from trantor_ai_assignment.settings import DATABASE_URL
+from contextlib import contextmanager
+from sqlmodel import SQLModel, Session, create_engine
+from .settings import DATABASE_URL
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
+engine = create_engine(DATABASE_URL)
 
+@contextmanager
 def get_session() -> Session:
-    with Session(engine) as session:
+    session = Session(engine)
+    try:
         yield session
+    finally:
+        session.close()
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+
