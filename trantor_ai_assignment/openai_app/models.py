@@ -14,4 +14,3 @@ class Question(SQLModel, table=True):
 
     class Config:
         orm_mode = True
-

@@ -1,47 +1,48 @@
 import unittest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from trantor_ai_assignment.main import app
+from trantor_ai_assignment.openai_app.routes import router
 
-client = TestClient(app)
+client = TestClient(router)
 
 
-class TestQuestionEndpoint(unittest.TestCase):
+class ChatEndpointTests(unittest.TestCase):
 
-    @patch('trantor_ai_assignment.openai_app.tasks.handle_question')
-    def test_ask_question_non_streaming(self, mock_handle_question):
-        mock_handle_question.return_value = "Paris"
-        
-        response = client.post("/question/non-streaming/", json={"text": "What is the capital of France?"})
-        
-        data = response.json()
+    def test_ask_question_success(self):
+        response = client.post("/chat", json={"text": "What is the capital of France?"})
         self.assertEqual(response.status_code, 200)
-        self.assertIn("answer", data)
-        self.assertEqual(data["answer"], "Paris")
+        self.assertEqual(response.json()["text"], "What is the capital of France?")
+        self.assertIn("answer", response.json())
 
-    @patch('trantor_ai_assignment.openai_app.tasks.handle_question')
-    def test_ask_question_streaming(self, mock_handle_question):
-        mock_handle_question.return_value = "Sunny"
-        
-        response = client.post("/question/streaming/", json={"text": "What is the weather like today?"})
-        
+    def test_ask_question_failure(self):
+        response = client.post("/chat", json={})
+        self.assertEqual(response.status_code, 500)
+
+class StreamChatEndpointTests(unittest.TestCase):
+
+    @patch('your_fastapi_main_module.fetch_stored_answer')
+    def test_stream_chat_with_stored_answer(self, mock_fetch_stored_answer):
+        mock_fetch_stored_answer.return_value = ["StoredAnswerChunk"]
+        response = client.post("/stream-chat", json={"text": "What is the capital of France?"})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, "Sunny")
+        self.assertEqual(response.headers["content-type"], "application/json")
 
-    @patch('trantor_ai_assignment.openai_app.tasks.handle_question')
-    def test_internal_server_error_non_streaming(self, mock_handle_question):
-        mock_handle_question.side_effect = Exception("Mocked internal server error")
-            
-        response = client.post("/question/non-streaming/", json={"text": "Test question"})
-            
-        self.assertEqual(response.status_code, 500)
-        self.assertIn("Internal Server Error", response.text)
+        chunks = list(response.iter_lines())
+        expected_chunks = ["StoredAnswerChunk"]
+        self.assertEqual(chunks, expected_chunks)
 
-    @patch('trantor_ai_assignment.openai_app.tasks.handle_question')
-    def test_internal_server_error_streaming(self, mock_handle_question):
-        mock_handle_question.side_effect = Exception("Mocked internal server error")
-            
-        response = client.post("/question/streaming/", json={"text": "Test question"})
-            
+    @patch('your_fastapi_main_module.fetch_and_store_openai_answers')
+    def test_stream_chat_without_stored_answer(self, mock_fetch_and_store_openai_answers):
+        mock_fetch_and_store_openai_answers.return_value = ["FirstChunk", "SecondChunk", "ThirdChunk"]
+        
+        response = client.post("/stream-chat", json={"text": "What is the capital of Spain?"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "application/json")
+
+        chunks = list(response.iter_lines())
+        expected_chunks = ["FirstChunk", "SecondChunk", "ThirdChunk"]
+        self.assertEqual(chunks, expected_chunks)
+
+    def test_stream_chat_failure(self):
+        response = client.post("/stream-chat", json={})
         self.assertEqual(response.status_code, 500)
-        self.assertIn("Internal Server Error", response.text)
