@@ -1,6 +1,5 @@
 import logging
 from trantor_ai_assignment.celery_app import app
-from trantor_ai_assignment.openai_app.services.database_service import add_question_to_database
 from trantor_ai_assignment.openai_app.services.openai_service import OpenAIRequester
 
 logging.basicConfig(level=logging.INFO)
