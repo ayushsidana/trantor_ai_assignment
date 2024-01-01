@@ -24,12 +24,10 @@ def add_question_to_database(question_text: str, answer: str):
     Adds a new question and its answer to the database.
     
     Parameters:
-    - db_session (Session): The database session object.
     - question_text (str): The text of the question to be added.
     - answer (str): The answer corresponding to the question.
     """
     with get_session() as db_session:
-        answer = answer[:1000]
         db_question = Question(text=question_text, answer=answer)
         db_session.add(db_question)
         db_session.commit()

@@ -36,7 +36,7 @@ def fetch_and_store_openai_answers(question_text):
                 yield answer_content
 
         if answers:
-            answer = ''.join(answers)[:1000]
+            answer = ''.join(answers)
             add_question_to_database(question_text=question_text, answer=answer)
             logger.info(f"Stored answer for question: {question_text}")
         else:
