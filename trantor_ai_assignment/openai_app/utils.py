@@ -4,7 +4,7 @@ import logging
 import requests
 
 from trantor_ai_assignment.openai_app.services.database_service import add_question_to_database
-from trantor_ai_assignment.openai_app.services.openai_service import OpenAIRequester
+from trantor_ai_assignment.openai_app.tasks import generate_openai_response
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,26 +28,16 @@ def fetch_and_store_openai_answers(question_text):
     """
     try:
         answers = []
-        openai_requester = OpenAIRequester()
-        response = openai_requester.get_requested_data(question=question_text, stream=True)
-        response.raise_for_status()
-
-        for chunk in response.iter_content(chunk_size=1024, decode_unicode=True):
-            for line in chunk.split('\n'):
-                if line.startswith('data: '):
-                    try:
-                        json_data = json.loads(line[6:])
-                        choices = json_data.get("choices")
-                        if choices and choices[0].get("delta"):
-                            answer_content = choices[0]["delta"]["content"]
-                            answers.append(answer_content)
-                            yield answer_content
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"JSON decode error encountered: {e}")
-                        continue
+        streamed_response = generate_openai_response(question=question_text, stream=True)
+        for chunk in streamed_response:
+            if chunk.choices[0].delta.content is not None:
+                answer_content = chunk.choices[0].delta.content
+                answers.append(answer_content)
+                yield answer_content
 
         if answers:
-            add_question_to_database(question_text=question_text, answer=''.join(answers))
+            answer = ''.join(answers)[:1000]
+            add_question_to_database(question_text=question_text, answer=answer)
             logger.info(f"Stored answer for question: {question_text}")
         else:
             raise ValueError("No valid data yielded from OpenAI")
@@ -58,3 +48,45 @@ def fetch_and_store_openai_answers(question_text):
     except Exception as e:
         logger.error(f"Error processing OpenAI answer: {e}")
         raise
+
+
+def get_streamlined_stored_answer(answer):
+    """
+    Generator function that breaks down the given 'answer' string into chunks of 10 characters each.
+    
+    Args:
+    - answer (str): The input string that needs to be segmented.
+    
+    Yields:
+    - str: Chunks of 10 characters from the input 'answer' string.
+    """
+    for chunk in [answer[i:i + 10] for i in range(0, len(answer), 10)]:
+        yield chunk
+
+
+def handle_question(question_text: str):
+    """
+    Handles the processing of a question text.
+    """
+    try:
+        logger.info(f"Started fetching from OpenAI. {question_text}")
+        
+        try:
+            # Fetch answer from OpenAI
+            response = generate_openai_response(question=question_text)
+            data_dict = json.loads(response.json())
+
+            # Extract the content
+            answer = data_dict['choices'][0]['message']['content'].strip()
+        except Exception as openai_error:
+            logger.error(f"Error while processing question with OpenAI: {question_text}. Error: {openai_error}")
+            raise openai_error
+        
+        logger.info(f"Storing new answer in the database for question: {question_text}")
+        add_question_to_database(question_text, answer)
+    
+        return answer
+
+    except Exception as error:
+        logger.error(f"Error processing question: {question_text}. Error: {error}")
+        raise error
