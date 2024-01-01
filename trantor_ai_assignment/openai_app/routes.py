@@ -4,7 +4,8 @@ from fastapi.responses import StreamingResponse
 
 from trantor_ai_assignment.openai_app.schemas import QuestionCreate, QuestionResponse
 from trantor_ai_assignment.openai_app.services.database_service import fetch_stored_answer
-from trantor_ai_assignment.openai_app.utils import fetch_and_store_openai_answers, get_streamlined_stored_answer, handle_question
+from trantor_ai_assignment.openai_app.services.openai_processors import DirectOpenAIProcessor, StreamedOpenAIProcessor
+from trantor_ai_assignment.openai_app.utils import get_streamlined_stored_answer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +21,9 @@ def ask_question(question: QuestionCreate):
 
         answer = fetch_stored_answer(question_text)
         if not answer:
-            answer = handle_question(question_text)
+            logger.info(f"Fetching answer from OpenAI for question: {question_text}")
+            processor = DirectOpenAIProcessor(question_text)
+            answer = processor.fetch_and_store_openai_answers()
 
         return QuestionResponse(text=question_text, answer=answer)
 
@@ -41,7 +44,8 @@ def stream_chat(question: QuestionCreate):
             return StreamingResponse(get_streamlined_stored_answer(answer), media_type="application/json")
         else:
             logger.info(f"Fetching answer from OpenAI for question: {question_text}")
-            return StreamingResponse(fetch_and_store_openai_answers(question_text), media_type="application/json")
+            processor = StreamedOpenAIProcessor(question_text)
+            return StreamingResponse(processor.fetch_and_store_openai_answers(), media_type="application/json")
 
     except Exception as e:
         logger.error(f"Error streaming answer: {e}")

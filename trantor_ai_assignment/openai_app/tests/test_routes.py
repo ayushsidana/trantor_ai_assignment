@@ -9,10 +9,10 @@ client = TestClient(app)
 
 
 class TestChatEndpoint(unittest.TestCase):
-    @patch('trantor_ai_assignment.openai_app.routes.handle_question')
-    def test_ask_question_success(self, mock_handle_question):
+    @patch('trantor_ai_assignment.openai_app.routes.DirectOpenAIProcessor.fetch_and_store_openai_answers')
+    def test_ask_question_success(self, mock_fetch_and_store_openai_answers):
         # Set the return value of the mocked function by awaiting the coroutine
-        mock_handle_question.return_value = "FastAPI is a modern, fast web framework for building APIs."
+        mock_fetch_and_store_openai_answers.return_value = "FastAPI is a modern, fast web framework for building APIs."
         
         # Make the API request
         response = client.post("/openai/chat", json={"text": "What is FastAPI?"})
@@ -75,7 +75,7 @@ class TestChatEndpoint(unittest.TestCase):
             self.assertEqual(response.json(), {"detail": "Internal Server Error"})
 
         # Test handle_question exception
-        with patch('trantor_ai_assignment.openai_app.routes.handle_question') as mock_handle_question:
+        with patch('trantor_ai_assignment.openai_app.routes.DirectOpenAIProcessor.fetch_and_store_openai_answers') as mock_handle_question:
             mock_handle_question.side_effect = Exception("Mocked error")
             
             response = client.post("/openai/chat", json={"text": "Mocked question"})
@@ -95,7 +95,7 @@ class TestStreamChatEndpoint(unittest.TestCase):
         self.assertEqual(response.headers["content-type"], "application/json")
         self.assertEqual(response.text, "Stored answer for FastAPI.")
 
-    @patch('trantor_ai_assignment.openai_app.routes.fetch_and_store_openai_answers')
+    @patch('trantor_ai_assignment.openai_app.routes.StreamedOpenAIProcessor.fetch_and_store_openai_answers')
     def test_stream_chat_with_openai_success(self, mock_fetch_and_store_openai_answers):
         # Mock the function to return a StreamingResponse.
         mocked_answer = "OpenAI answer for FastAPI."
@@ -162,7 +162,7 @@ class TestStreamChatEndpoint(unittest.TestCase):
             self.assertEqual(response.json(), {"detail": "Internal Server Error"})
 
         # Test fetch_and_store_openai_answers exception
-        with patch('trantor_ai_assignment.openai_app.routes.fetch_and_store_openai_answers') as mock_fetch_and_store_openai_answers:
+        with patch('trantor_ai_assignment.openai_app.routes.StreamedOpenAIProcessor.fetch_and_store_openai_answers') as mock_fetch_and_store_openai_answers:
             mock_fetch_and_store_openai_answers.side_effect = Exception("Mocked error")
             
             response = client.post("/openai/stream-chat", json={"text": "Mocked question"})
